@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api.apps.ApiConfig',
+    'user.apps.UserConfig',
     'rest_framework',
 ]
 
@@ -91,6 +93,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
 }
 
 # Password validation
@@ -135,3 +140,20 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 APPEND_SLASH = False
+
+AUTH_USER_MODEL = 'user.CustomUser'
+
+SIMPLE_JWT = {
+    #     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    #     'REFRESH_TOKEN_LIFETIME': timedelta(days=20),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    #     'ALGORITHM': 'HS256',
+    #     'SIGNING_KEY': SECRET_KEY,
+    #     'VERIFYING_KEY': None,
+    #     'AUTH_HEADER_TYPES': ('JWT',),
+    #     'USER_ID_FIELD': 'id',
+    #     'USER_ID_CLAIM': 'user_id',
+    #     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    #     'TOKEN_TYPE_CLAIM': 'token_type',
+}
