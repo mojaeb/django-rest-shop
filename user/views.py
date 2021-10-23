@@ -24,7 +24,8 @@ class BlacklistTokenUpdateView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = ()
 
-    def post(self, request):
+    @staticmethod
+    def post(_self, request):
         try:
             refresh_token = request.data["refresh_token"]
             token = RefreshToken(refresh_token)
