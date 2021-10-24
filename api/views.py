@@ -1,4 +1,3 @@
-from django.core.paginator import Paginator
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -12,14 +11,18 @@ from .models import Product
 from .serializers import ProductByIdSerializer, LikeSerializer, BrandSerializer, CategorySerializer
 from .serializers import ProductSerializer, NotificationsSerializer, AddressesSerializer, BannerSerializer
 from .serializers import SliderSerializer, OrderSerializer
+from .utils import is_true, calculate_shipping_price
+from django.conf import settings
+from rest_framework.routers import reverse
 import requests
-from . import urls
+import json
+from django.utils import timezone
+
 
 # TODO search with parameters
 # TODO pagination
 # filter with pass category_id, product_title, tag_id, banner_id, between price number,
 # has in warehouse
-from .utils import is_true, calculate_shipping_price
 
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -241,7 +244,9 @@ def add_to_cart(request, product_id, quantity):
         user=user,
         product_id=product_id
     )
-    if product.quantity >= (order_item.quantity + quantity):
+    if product.quantity != 0 and quantity <= product.quantity:
+        product.quantity -= quantity
+        product.save()
         if created:
             order_item.quantity = quantity
             order_item.save()
@@ -286,19 +291,24 @@ def cart(request):
     serializer = OrderSerializer(order)
     has_shipping_price = is_true(request.query_params.get('has_shipping_price'))
     if has_shipping_price and order.order_items.count():
-        shipping_price = calculate_shipping_price(
+        shipping_price, error = calculate_shipping_price(
             order.total_price_after_discount,
             order.total_weight,
             city=order.address.city_code,
             state=order.address.state_code,
         )
-        return Response({
-            'data': {
-                **serializer.data,
-                'shipping_price': shipping_price,
-                'total_price_after_shipping': order.total_price_after_discount + shipping_price
-            }
-        })
+        if not error:
+            return Response({
+                'data': {
+                    **serializer.data,
+                    'shipping_price': shipping_price,
+                    'total_price_after_shipping': order.total_price_after_discount + shipping_price
+                }
+            })
+        return Response(
+            {'error': 'some error in get shipping prices'},
+            status=HTTP_400_BAD_REQUEST
+        )
     return Response({
         'data': serializer.data
     })
@@ -338,16 +348,76 @@ def checkout(request):
         state=order.address.state_code,
     )
     if not error:
-        # payment functionality
         # payment with zarinpal
+        amount = order.total_price_after_discount + shipping_price
+        callback_url = request.build_absolute_uri(reverse('verify_payment'))
+        if 'callback_url' in request.data:
+            callback_url = request.data['callback_url']
         data = {
-            'merchant_id':
+            'merchant_id': settings.ZP_MERCHANT,
+            "amount": int(amount),
+            "callback_url": callback_url,
+            "description": "user: {} payed {} rial".format(order.user.email, str(amount)),
+            "metadata": {"mobile": order.user.phone_number, "email": order.user.email}
         }
-        return Response(shipping_price)
+        header = {"accept": "application/json", "content-type": "application/json'"}
+        resp = requests.post(settings.ZP_API_REQUEST, data=json.dumps(data), headers=header)
+        authority = resp.json()['data']['authority']
+        pay_url = settings.ZP_API_START_PAY.format(authority=authority)
+        # register data in order
+        # ######################
+        order.authority = authority
+        order.pay_url = pay_url
+        order.amount = amount
+        order.discount_amount = order.total_discount
+        order.checkout_datetime = timezone.now()
+        order.save()
+        if len(resp.json()['errors']) == 0:
+            return Response({'data': {'pay_url': pay_url}})
+        return Response({'error': resp.json()['errors']})
     return Response(
         {'error': 'checkout has some error'},
         status=HTTP_400_BAD_REQUEST
     )
+
+
+@api_view(['GET'])
+def verify_payment(request):
+    t_status = request.GET.get('Status')
+    t_authority = request.GET['Authority']
+    if t_status == 'OK':
+        order = Order.objects.get(authority=t_authority)
+        req_header = {"accept": "application/json", "content-type": "application/json'"}
+        req_data = {
+            "merchant_id": settings.ZP_MERCHANT,
+            "amount": order.amount,
+            "authority": t_authority
+        }
+        req = requests.post(url=settings.ZP_API_VERIFY, data=json.dumps(req_data), headers=req_header)
+        if len(req.json()['errors']) == 0:
+            t_status = req.json()['data']['code']
+            if t_status == 100:
+                ref_id = req.json()['data']['ref_id']
+                order.ref_id = ref_id
+                order.canceled = False
+                order.payment_succeed = True
+                order.success_payment_datetime = timezone.now()
+                order.save()
+                return Response({'data': {'message': 'payment succeed', 'ref_id': ref_id}})
+            elif t_status == 101:
+                message = req.json()['data']['message']
+                return Response({'data': 'Transaction submitted : '.format(message)})
+            else:
+                order.canceled = True
+                order.save()
+                message = req.json()['data']['message']
+                return Response({'data': 'Transaction failed : '.format(message)})
+        else:
+            e_code = req.json()['errors']['code']
+            e_message = req.json()['errors']['message']
+            return Response({'error': {'message': e_message, 'code': e_code}})
+    else:
+        return Response({'Transaction failed or canceled by user'})
 
 
 @api_view(['POST'])
@@ -356,11 +426,17 @@ def increase_quantity(request, order_item_id):
     user = request.user
     order_item = OrderItem.objects.get(pk=order_item_id, user=user)
     product_quantity = order_item.product.quantity
-    if product_quantity >= (order_item.quantity + 1):
+    if product_quantity != 0:
+        order_item.quantity += 1
+        order_item.product.quantity -= 1
+        order_item.product.save()
+        order_item.save()
         return Response(
             {'data': 'increment was successful'},
             status=HTTP_200_OK
         )
+    else:
+        return Response({'error': 'cant increment'}, status=HTTP_404_NOT_FOUND)
 
 
 @api_view(['POST'])
@@ -368,18 +444,17 @@ def increase_quantity(request, order_item_id):
 def decrease_quantity(request, order_item_id):
     user = request.user
     order_item = OrderItem.objects.get(pk=order_item_id, user=user)
-    product_quantity = order_item.product.quantity
-    current_quantity = order_item.quantity - 1
-    if product_quantity >= current_quantity > 0:
+    if order_item.quantity != 0:
+        order_item.quantity -= 1
+        order_item.product.quantity += 1
+        order_item.product.save()
+        if order_item.quantity == 0:
+            order_item.delete()
+        else:
+            order_item.save()
         return Response(
             {'data': 'decrement was successful'},
             status=HTTP_200_OK
-        )
-    elif current_quantity == 0:
-        order_item.delete()
-        return Response(
-            {'data': 'order deleted was successful'},
-            status=HTTP_204_NO_CONTENT
         )
 
 
@@ -402,5 +477,4 @@ def change_order_pay_method(request):
 def change_order_delivery_mode():
 def bulk_add_to_cart():
 def orders(request):
-
 '''

@@ -32,5 +32,8 @@ urlpatterns = [
     path('remove-from-cart/<int:order_item_id>/', views.remove_from_cart),
     path('seed-to-cart/', views.get_sliders),
     path('cart/', views.cart),
-    path('checkout/', views.checkout)
+    path('checkout/', views.checkout),
+    path('verify-payment', views.verify_payment, name="verify_payment"),
+    path('increment-quantity/<int:order_item_id>', views.increase_quantity),
+    path('decrement-quantity/<int:order_item_id>', views.decrease_quantity)
 ]

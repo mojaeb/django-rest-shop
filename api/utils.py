@@ -42,4 +42,5 @@ def calculate_shipping_price(price, weight, state, city):
     except requests.RequestException as err:
         return None, err
     data = result.json()
-    return data['entries']['total'], None
+    total = int(data['entries']['total'])
+    return total, None

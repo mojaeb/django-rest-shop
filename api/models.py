@@ -111,13 +111,18 @@ class Address(models.Model):
 # shopping models
 class Order(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    payment_id = models.CharField(max_length=200, null=True, blank=True)
     payment_succeed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    price = models.IntegerField(default=None, null=True, blank=True)
-    discount = models.IntegerField(default=None, blank=True, null=True)
+    amount = models.IntegerField(default=None, null=True, blank=True)
+    discount_amount = models.IntegerField(default=None, blank=True, null=True)
     deleted_at = models.DateTimeField(null=True, blank=True, default=None)
     address = models.ForeignKey(Address, null=True, on_delete=models.SET_NULL, blank=True, related_name='orders')
+    authority = models.CharField(max_length=200, null=True, blank=True)
+    pay_url = models.URLField(null=True, blank=True)
+    canceled = models.BooleanField(default=False)
+    ref_id = models.CharField(null=True, blank=True, max_length=200)
+    checkout_datetime = models.DateTimeField(blank=True, null=True)
+    success_payment_datetime = models.DateTimeField(blank=True, null=True)
 
     @property
     def total_price(self):

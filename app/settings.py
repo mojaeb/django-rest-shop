@@ -163,6 +163,10 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
 SOURCE_STATE_CODE = "1"
 SOURCE_CITY_CODE = "1"
+
+ZP_MERCHANT = '2f85a167-6367-4db4-9907-33d510733ae1'
+ZP_API_REQUEST = "https://api.zarinpal.com/pg/v4/payment/request.json"
+ZP_API_VERIFY = "https://api.zarinpal.com/pg/v4/payment/verify.json"
+ZP_API_START_PAY = "https://www.zarinpal.com/pg/StartPay/{authority}"

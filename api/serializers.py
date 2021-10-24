@@ -23,6 +23,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'image',
             'price',
             'discount',
+            'quantity',
         ]
 
 
@@ -169,11 +170,10 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id',
-            'payment_id',
             'payment_succeed',
             'created_at',
-            'price',
-            'discount',
+            'amount',
+            'discount_amount',
             'deleted_at',
             'address',
             'order_items',
@@ -181,7 +181,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'total_discount',
             'total_price_after_discount',
             'total_weight',
-
+            'pay_url',
+            'authority',
+            'canceled',
         ]
 
 
