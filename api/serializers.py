@@ -1,5 +1,6 @@
+from django.conf import Settings
 from rest_framework import serializers
-from .models import Product, Banner, Slider, Order, OrderItem, Like
+from .models import Comment, Country, GalleryImage, Product, Banner, Slider, Order, OrderItem, Like
 from .models import Address
 from .models import ProductTag
 from .models import DeliveryMode
@@ -8,22 +9,38 @@ from .models import Category
 from .models import Brand
 from .models import Notification
 import requests
-
+from django.conf import settings
 from . import urls
+from django.contrib.auth import get_user_model
 
 
-class ProductSerializer(serializers.ModelSerializer):
+class UserInfoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Product
+        model = get_user_model()
         fields = [
             'id',
-            'slug',
-            'title',
-            'code',
-            'image',
-            'price',
-            'discount',
-            'quantity',
+            'email',
+            'is_superuser',
+            'user_name',
+            'profile_image',
+            'first_name',
+            'last_name',
+            'email',
+            'phone_number',
+        ]
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = [
+            'id',
+            'is_superuser',
+            'user_name',
+            'profile_image',
+            'first_name',
+            'last_name',
+            'phone_number',
         ]
 
 
@@ -53,7 +70,26 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'name',
-            'slug'
+            'slug',
+            'parent_id'
+        ]
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'code',
+            'image',
+            'price',
+            'discount',
+            'quantity',
+            'category'
         ]
 
 
@@ -68,11 +104,30 @@ class BrandSerializer(serializers.ModelSerializer):
         ]
 
 
+class GallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GalleryImage
+        fields = [
+            'image',
+        ]
+
+
+class CountrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Country
+        fields = [
+            'name',
+            'slug',
+        ]
+
+
 class ProductByIdSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
-    delivery_mode = DeliveryModeSerializer()
+    # delivery_mode = DeliveryModeSerializer()
     category = CategorySerializer()
     brand = BrandSerializer()
+    gallery = GallerySerializer(many=True)
+    country = CountrySerializer()
 
     class Meta:
         model = Product
@@ -90,8 +145,11 @@ class ProductByIdSerializer(serializers.ModelSerializer):
             'gallery',
             'quantity',
             'tags',
-            'delivery_mode',
+            'country',
             'weight',
+            'details',
+            'description',
+            'color',
         ]
 
 
@@ -106,11 +164,16 @@ class NotificationsSerializer(serializers.ModelSerializer):
 
 
 class AddressesSerializer(serializers.ModelSerializer):
+    user = UserSerializer(required=False)
+    house_number = serializers.IntegerField(required=False)
+    unit = serializers.IntegerField(required=False)
+
     class Meta:
         model = Address
         fields = [
             'id',
             'city',
+            'user',
             'city_code',
             'state_code',
             'state',
@@ -118,7 +181,11 @@ class AddressesSerializer(serializers.ModelSerializer):
             'address',
             'is_mine',
             'phone_number',
-            'person_name',
+            'first_name',
+            'last_name',
+            'house_number',
+            'unit',
+            'zip_code',
         ]
 
 
@@ -184,6 +251,22 @@ class OrderSerializer(serializers.ModelSerializer):
             'pay_url',
             'authority',
             'canceled',
+            'warehouse_confirmation',
+            'delivered',
+            'returned',
+        ]
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = Comment
+        fields = [
+            'user',
+            'text',
+            'created_at',
+            'product'
         ]
 
 

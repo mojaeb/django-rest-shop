@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -8,7 +10,8 @@ from .models import Comment, Category, Brand
 from .models import Like, Address, Banner, Slider, Order, OrderItem
 from .models import Notification
 from .models import Product
-from .serializers import ProductByIdSerializer, LikeSerializer, BrandSerializer, CategorySerializer
+from .serializers import CommentSerializer, ProductByIdSerializer, LikeSerializer, BrandSerializer, CategorySerializer, \
+    UserSerializer, UserInfoSerializer
 from .serializers import ProductSerializer, NotificationsSerializer, AddressesSerializer, BannerSerializer
 from .serializers import SliderSerializer, OrderSerializer
 from .utils import is_true, calculate_shipping_price
@@ -17,6 +20,8 @@ from rest_framework.routers import reverse
 import requests
 import json
 from django.utils import timezone
+from django.conf import settings
+import os
 
 
 # TODO search with parameters
@@ -35,8 +40,17 @@ class StandardResultsSetPagination(PageNumberPagination):
 @api_view(['POST'])
 def get_products(request):
     filters = {}
-    for key, value in request.data.items():
-        filters[key] = value
+    # for key, value in request.data.items():
+    #     filters[key] = value
+    if 'has_discount' in request.data:
+        filters['discount__gt'] = 0
+    if 'category_id' in request.data:
+        filters['category_id'] = request.data['category_id']
+    if 'brand_id' in request.data:
+        filters['brand_id'] = request.data['brand_id']
+    if 'available_in_warehouse' in request.data:
+        filters['quantity__gt'] = 0
+
     products = Product.objects.filter(**filters)
     len_product = len(products)
     if len_product > 0:
@@ -79,6 +93,16 @@ def get_categories(request):
 
 
 @api_view(['GET'])
+def get_home_categories(request):
+    products = Category.objects.filter(show_in_home=True)
+    serializer = CategorySerializer(products, many=True)
+    return Response(
+        {'data': serializer.data},
+        status=HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
 def get_product(request, pid):
     try:
         product = Product.objects.get(pk=pid)
@@ -102,6 +126,19 @@ def like_product(request, pid):
     return Response(
         {'data': 'liked was successful'},
         status=HTTP_201_CREATED
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_states_and_cities(request):
+    media_dir = settings.MEDIA_ROOT + '/jsons/states.json'
+    file = open(media_dir, 'r', encoding='utf8')
+    json_data = json.load(file)
+    file.close()
+    return Response(
+        {'data': json_data},
+        status=HTTP_200_OK
     )
 
 
@@ -133,6 +170,61 @@ def get_likes(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def upload_profile_image(request):
+    user_model = get_user_model()
+    user = user_model.objects.get(id=request.user.id)
+    try:
+        image = request.data['image']
+        user.profile_image = image
+        user.save()
+    except KeyError:
+        return Response({'error': 'not found'}, status=HTTP_404_NOT_FOUND)
+    return Response({'data': 'uploaded successfully'}, status=HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def edit_profile(request):
+    try:
+        user_model = get_user_model()
+        user = user_model.objects.get(id=request.user.id)
+        obj = {}
+        allowed_fields = ['first_name', 'last_name', 'user_name', 'phone_number']
+        for (key, value) in request.data.items():
+            if key in allowed_fields:
+                obj[key] = value
+        user.__dict__.update(obj)
+        user.save()
+    except KeyError:
+        return Response({'error': 'not found'}, status=HTTP_404_NOT_FOUND)
+    return Response({'data': "changed successfully"}, status=HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    password = request.data['password']
+    user_model = get_user_model()
+    user = user_model.objects.get(id=request.user.id)
+    user.set_password(password)
+    print(password)
+    return Response({'data': "changed successfully"}, status=HTTP_200_OK)
+
+
+@api_view(['GET'])
+def get_product_comments(request, pid):
+    comments = Comment.objects.filter(
+        product_id=pid
+    )
+    serializer = CommentSerializer(comments, many=True)
+    return Response(
+        {'data': serializer.data},
+        status=HTTP_201_CREATED
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def add_comment(request, pid):
     user = request.user
     if not ('text' in request.data):
@@ -157,6 +249,18 @@ def remove_comment(request, cid):
     Comment.objects.get(id=cid).delete()
     return Response(
         {'data': 'deleted was successful'},
+        status=HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_info(request):
+    user_model = get_user_model()
+    user = user_model.objects.get(id=request.user.id)
+    serializer = UserInfoSerializer(user)
+    return Response(
+        {'data': serializer.data},
         status=HTTP_200_OK
     )
 
@@ -223,6 +327,17 @@ def get_sliders(request):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_orders(request):
+    orders = Order.objects.filter(user=request.user)
+    serializer = OrderSerializer(orders, many=True)
+    return Response(
+        {'data': serializer.data},
+        status=HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
 def get_banners(request):
     banners = Banner.objects.all()
     serializer = BannerSerializer(banners, many=True)
@@ -260,15 +375,17 @@ def add_to_cart(request, product_id, quantity):
     else:
         return Response(
             {'error': "product hasn't {} quantity".format(quantity)},
-            status=HTTP_204_NO_CONTENT
+            status=HTTP_404_NOT_FOUND
         )
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def remove_from_cart(request, order_item_id):
-    order = OrderItem.objects.get(pk=order_item_id)
-    order.delete()
+    order_item = OrderItem.objects.get(pk=order_item_id)
+    order_item.product.quantity = order_item.quantity
+    order_item.delete()
+    order_item.product.save()
     return Response({'data': 'deleted was successful'}, status=HTTP_204_NO_CONTENT)
 
 
@@ -277,7 +394,8 @@ def remove_from_cart(request, order_item_id):
 def cart(request):
     user = request.user
     try:
-        order, created = Order.objects.get_or_create(payment_succeed=False, user=user)
+        order, created = Order.objects.get_or_create(
+            payment_succeed=False, user=user)
     except Order.DoesNotExist:
         return Response(
             {'error': 'not found'},
@@ -289,8 +407,8 @@ def cart(request):
             order.address = last_address[0]
             order.save()
     serializer = OrderSerializer(order)
-    has_shipping_price = is_true(request.query_params.get('has_shipping_price'))
-    if has_shipping_price and order.order_items.count():
+
+    if order.address and order.order_items.count():
         shipping_price, error = calculate_shipping_price(
             order.total_price_after_discount,
             order.total_weight,
@@ -314,6 +432,8 @@ def cart(request):
     })
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def change_order_address(request, address_id):
     user = request.user
     order = Order.objects.get(payment_succeed=False, user=user)
@@ -360,8 +480,10 @@ def checkout(request):
             "description": "user: {} payed {} rial".format(order.user.email, str(amount)),
             "metadata": {"mobile": order.user.phone_number, "email": order.user.email}
         }
-        header = {"accept": "application/json", "content-type": "application/json'"}
-        resp = requests.post(settings.ZP_API_REQUEST, data=json.dumps(data), headers=header)
+        header = {"accept": "application/json",
+                  "content-type": "application/json'"}
+        resp = requests.post(settings.ZP_API_REQUEST,
+                             data=json.dumps(data), headers=header)
         authority = resp.json()['data']['authority']
         pay_url = settings.ZP_API_START_PAY.format(authority=authority)
         # register data in order
@@ -387,13 +509,15 @@ def verify_payment(request):
     t_authority = request.GET['Authority']
     if t_status == 'OK':
         order = Order.objects.get(authority=t_authority)
-        req_header = {"accept": "application/json", "content-type": "application/json'"}
+        req_header = {"accept": "application/json",
+                      "content-type": "application/json'"}
         req_data = {
             "merchant_id": settings.ZP_MERCHANT,
             "amount": order.amount,
             "authority": t_authority
         }
-        req = requests.post(url=settings.ZP_API_VERIFY, data=json.dumps(req_data), headers=req_header)
+        req = requests.post(url=settings.ZP_API_VERIFY,
+                            data=json.dumps(req_data), headers=req_header)
         if len(req.json()['errors']) == 0:
             t_status = req.json()['data']['code']
             if t_status == 100:
@@ -403,21 +527,21 @@ def verify_payment(request):
                 order.payment_succeed = True
                 order.success_payment_datetime = timezone.now()
                 order.save()
-                return Response({'data': {'message': 'payment succeed', 'ref_id': ref_id}})
+                return Response({'data': {'message': 'payment succeed', 'ref_id': ref_id}}, HTTP_200_OK)
             elif t_status == 101:
                 message = req.json()['data']['message']
-                return Response({'data': 'Transaction submitted : '.format(message)})
+                return Response({'data': 'Transaction submitted : '.format(message)}, status=HTTP_200_OK)
             else:
                 order.canceled = True
                 order.save()
                 message = req.json()['data']['message']
-                return Response({'data': 'Transaction failed : '.format(message)})
+                return Response({'error': 'Transaction failed : '.format(message)}, status=HTTP_400_BAD_REQUEST)
         else:
             e_code = req.json()['errors']['code']
             e_message = req.json()['errors']['message']
-            return Response({'error': {'message': e_message, 'code': e_code}})
+            return Response({'error': {'message': e_message, 'code': e_code}}, status=HTTP_400_BAD_REQUEST)
     else:
-        return Response({'Transaction failed or canceled by user'})
+        return Response({'Transaction failed or canceled by user'}, status=HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])

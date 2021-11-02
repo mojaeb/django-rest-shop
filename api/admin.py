@@ -14,6 +14,7 @@ from .models import Brand
 from .models import Order
 from .models import GalleryImage
 from .models import Address
+from .models import Country
 
 # Register your models here.
 # class ProductAdmin(admin.ModelAdmin):
@@ -37,3 +38,4 @@ admin.site.register(DeliveryModeItem)
 admin.site.register(OrderItem)
 admin.site.register(ShippingStatus)
 admin.site.register(Shipping)
+admin.site.register(Country)

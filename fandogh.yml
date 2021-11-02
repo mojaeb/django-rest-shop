@@ -1,0 +1,18 @@
+kind: ExternalService
+name: backend-shop
+spec:
+  image_pull_policy: Always
+  port: 8000
+  path: /backend
+  domains:
+  - name: medicaap.com
+  source:
+    context: .
+    media_path: media
+    project_type: django
+    python_version: '3.9'
+    static_path: static
+    wsgi: app.wsgi
+  volume_mounts:
+  - mount_path: /usr/src/app/media
+    sub_path: backend-shop/media
