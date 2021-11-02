@@ -1,27 +1,26 @@
+import json
+
+import requests
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.routers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_204_NO_CONTENT
+
 from .models import Comment, Category, Brand
 from .models import Like, Address, Banner, Slider, Order, OrderItem
 from .models import Notification
 from .models import Product
 from .serializers import CommentSerializer, ProductByIdSerializer, LikeSerializer, BrandSerializer, CategorySerializer, \
-    UserSerializer, UserInfoSerializer
+    UserInfoSerializer
 from .serializers import ProductSerializer, NotificationsSerializer, AddressesSerializer, BannerSerializer
 from .serializers import SliderSerializer, OrderSerializer
-from .utils import is_true, calculate_shipping_price
-from django.conf import settings
-from rest_framework.routers import reverse
-import requests
-import json
-from django.utils import timezone
-from django.conf import settings
-import os
+from .utils import calculate_shipping_price
 
 
 # TODO search with parameters
@@ -40,6 +39,7 @@ class StandardResultsSetPagination(PageNumberPagination):
 @api_view(['POST'])
 def get_products(request):
     filters = {}
+    order_by = '-created_at'
     # for key, value in request.data.items():
     #     filters[key] = value
     if 'has_discount' in request.data:
@@ -48,10 +48,18 @@ def get_products(request):
         filters['category_id'] = request.data['category_id']
     if 'brand_id' in request.data:
         filters['brand_id'] = request.data['brand_id']
-    if 'available_in_warehouse' in request.data:
+    if 'available_in_warehouse' in request.data and request.data['available_in_warehouse']:
         filters['quantity__gt'] = 0
+    if 'order_by' in request.data:
+        order_by = request.data['order_by']
+    if 'price' in request.data:
+        if len(request.data['price']) == 2:
+            filters['price__gte'] = request.data['price'][0]
+            filters['price__lte'] = request.data['price'][1]
+    if 'title' in request.data:
+        filters['title__contains'] = request.data['title']
 
-    products = Product.objects.filter(**filters)
+    products = Product.objects.filter(**filters).order_by(order_by)
     len_product = len(products)
     if len_product > 0:
         paginator = StandardResultsSetPagination()

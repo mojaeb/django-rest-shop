@@ -26,7 +26,9 @@ SECRET_KEY = 'django-insecure-=qya*xk-+iv)th5*wxp&g&xni(%osxqwuh7)nblbf@_@)3o6el
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'backend-medicaap-aapit.fandogh.cloud'
+]
 
 # Application definition
 
@@ -57,7 +59,8 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
+    'http://medicaap.com',
+    'https://medicaap.com',
 ]
 
 ROOT_URLCONF = 'app.urls'
@@ -88,16 +91,15 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'shop_db',
         'USER': 'postgres',
-        'PASSWORD': 'mje1212',
-        'HOST': 'localhost',
+        'PASSWORD': 'mje1212345678',
+        'HOST': 'postgresql-medicapp',
         'PORT': '5432',
 
     }
 }
 
 ALLOWED_HOSTS = [
-    'medicaap.com',
-    'localhost',
+    'backend-medicaap-aapit.fandogh.cloud',
 ]
 
 REST_FRAMEWORK = {
