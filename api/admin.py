@@ -15,6 +15,7 @@ from .models import Order
 from .models import GalleryImage
 from .models import Address
 from .models import Country
+from .models import Color
 
 # Register your models here.
 # class ProductAdmin(admin.ModelAdmin):
@@ -22,6 +23,7 @@ from .models import Country
 
 
 admin.site.register(Address)
+admin.site.register(Color)
 admin.site.register(Comment)
 admin.site.register(Like)
 admin.site.register(Notification)

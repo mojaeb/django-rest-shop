@@ -52,8 +52,20 @@ class ProductTag(models.Model):
         return self.name
 
 
+class Color(models.Model):
+    name = models.CharField(max_length=50)
+    slug = models.CharField(max_length=50)
+    hex = models.CharField(max_length=8)
+
+    def __str__(self):
+        return self.name
+
+
 class GalleryImage(models.Model):
     image = models.ImageField(upload_to='images')
+
+    def __str__(self):
+        return str(self.image)
 
 
 class Country(models.Model):
@@ -83,7 +95,7 @@ class Product(models.Model):
     description = models.TextField(null=True, blank=True)
     country = models.ForeignKey(
         Country, null=True, blank=True, on_delete=models.PROTECT)
-    color = models.CharField(max_length=20, null=True, blank=True)
+    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.title

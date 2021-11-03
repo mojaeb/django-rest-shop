@@ -27,10 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-=qya*xk-+iv)th5*wxp&g&xni(%osxqwuh7)nblbf@_@)3o6el'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = [
-    'backend-medicaap-aapit.fandogh.cloud'
+    env('ALLOWED_HOST')
 ]
 
 # Application definition
@@ -62,8 +62,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOWED_ORIGINS = [
-    'http://medicaap.com',
-    'https://medicaap.com',
+    env('CORS_ALLOWED_URL'),
 ]
 
 ROOT_URLCONF = 'app.urls'
@@ -101,9 +100,6 @@ DATABASES = {
     }
 }
 
-ALLOWED_HOSTS = [
-    'backend-medicaap-aapit.fandogh.cloud',
-]
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
