@@ -1,4 +1,4 @@
-from PIL.ImageEnhance import Color
+
 from django.conf import Settings
 from rest_framework import serializers
 from .models import Comment, Country, GalleryImage, Product, Banner, Slider, Order, OrderItem, Like
@@ -9,6 +9,7 @@ from .models import DeliveryModeItem
 from .models import Category
 from .models import Brand
 from .models import Notification
+from .models import Color
 import requests
 from django.conf import settings
 from . import urls
@@ -48,7 +49,11 @@ class UserSerializer(serializers.ModelSerializer):
 class ColorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Color
-        fields = ['__all__']
+        fields = [
+            'name',
+            'slug',
+            'hex'
+        ]
 
 
 class DeliveryModeItemSerializer(serializers.ModelSerializer):
