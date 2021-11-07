@@ -15,15 +15,35 @@ from .models import Order
 from .models import GalleryImage
 from .models import Address
 from .models import Country
-from .models import Color
+from .models import ProductVariant
+from .models import OptionType
+from .models import OptionValue
+from .models import VariantOption
+
 
 # Register your models here.
 # class ProductAdmin(admin.ModelAdmin):
 #     fields = ['slug', 'title', 'code', 'user', 'price', 'discount', 'image']
 
+class VariantOptionAdmin(admin.StackedInline):
+    model = VariantOption
+    extra = 1
 
+
+class ProductVariantAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (None, {'fields': ['product', 'code']}),
+        ("prices", {'fields': ['price', 'discount', 'discount_due_date']}),
+        ("information", {'fields': ['weight', 'quantity']}),
+    ]
+    inlines = [VariantOptionAdmin]
+
+
+admin.site.register(OptionType)
+admin.site.register(VariantOption)
+admin.site.register(OptionValue)
 admin.site.register(Address)
-admin.site.register(Color)
+admin.site.register(ProductVariant, ProductVariantAdmin)
 admin.site.register(Comment)
 admin.site.register(Like)
 admin.site.register(Notification)

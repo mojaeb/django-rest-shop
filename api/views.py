@@ -12,7 +12,7 @@ from rest_framework.routers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_204_NO_CONTENT
 
-from .models import Comment, Category, Brand
+from .models import Comment, Category, Brand, ProductVariant
 from .models import Like, Address, Banner, Slider, Order, OrderItem
 from .models import Notification
 from .models import Product
@@ -20,7 +20,7 @@ from .serializers import CommentSerializer, ProductByIdSerializer, LikeSerialize
     UserInfoSerializer
 from .serializers import ProductSerializer, NotificationsSerializer, AddressesSerializer, BannerSerializer
 from .serializers import SliderSerializer, OrderSerializer
-from .utils import calculate_shipping_price
+from .utils import calculate_shipping_price, str_to_boolean
 
 
 # TODO search with parameters
@@ -36,6 +36,7 @@ class StandardResultsSetPagination(PageNumberPagination):
     max_page_size = 1000
 
 
+# TODO change this section {multi-pricing}
 @api_view(['POST'])
 def get_products(request):
     filters = {}
@@ -43,23 +44,23 @@ def get_products(request):
     # for key, value in request.data.items():
     #     filters[key] = value
     if 'has_discount' in request.data:
-        filters['discount__gt'] = 0
+        filters['variants__discount__gt'] = 0
     if 'category_id' in request.data:
         filters['category_id'] = request.data['category_id']
     if 'brand_id' in request.data:
         filters['brand_id'] = request.data['brand_id']
     if 'available_in_warehouse' in request.data and request.data['available_in_warehouse']:
-        filters['quantity__gt'] = 0
+        filters['variants__quantity__gt'] = 0
     if 'order_by' in request.data:
         order_by = request.data['order_by']
     if 'price' in request.data:
         if len(request.data['price']) == 2:
-            filters['price__gte'] = request.data['price'][0]
-            filters['price__lte'] = request.data['price'][1]
+            filters['variants__price__gte'] = request.data['price'][0]
+            filters['variants__price__lte'] = request.data['price'][1]
     if 'title' in request.data:
         filters['title__contains'] = request.data['title']
 
-    products = Product.objects.filter(**filters).order_by(order_by)
+    products = Product.objects.filter(**filters).order_by(order_by).distinct()
     len_product = len(products)
     if len_product > 0:
         paginator = StandardResultsSetPagination()
@@ -355,21 +356,27 @@ def get_banners(request):
     )
 
 
+# TODO change this section {multi-pricing}{done}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def add_to_cart(request, product_id, quantity):
+def add_to_cart(request):
+    variant_id = request.data['variant_id']
+    product_id = request.data['product_id']
+    quantity = request.data['quantity']
+
     user = request.user
     order = Order.objects.get_or_create(payment_succeed=False, user=user)
     order = order[0]
-    product = Product.objects.get(pk=product_id)
+    product_variant = ProductVariant.objects.get(pk=variant_id)
     order_item, created = OrderItem.objects.get_or_create(
         order=order,
         user=user,
-        product_id=product_id
+        product_id=product_id,
+        product_variant_id=variant_id,
     )
-    if product.quantity != 0 and quantity <= product.quantity:
-        product.quantity -= quantity
-        product.save()
+    if product_variant.quantity != 0 and quantity <= product_variant.quantity:
+        product_variant.quantity -= quantity
+        product_variant.save()
         if created:
             order_item.quantity = quantity
             order_item.save()
@@ -387,16 +394,18 @@ def add_to_cart(request, product_id, quantity):
         )
 
 
+# TODO change this section {multi-pricing}{done}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def remove_from_cart(request, order_item_id):
     order_item = OrderItem.objects.get(pk=order_item_id)
-    order_item.product.quantity = order_item.quantity
+    order_item.product_variant.quantity = order_item.quantity
     order_item.delete()
-    order_item.product.save()
+    order_item.product_variant.save()
     return Response({'data': 'deleted was successful'}, status=HTTP_204_NO_CONTENT)
 
 
+# TODO change this section {multi-pricing}
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def cart(request):
@@ -416,7 +425,9 @@ def cart(request):
             order.save()
     serializer = OrderSerializer(order)
 
-    if order.address and order.order_items.count():
+    has_shipping_payment = str_to_boolean(request.GET.get("has_shipping_payment"))
+
+    if order.address and order.order_items.count() and has_shipping_payment:
         shipping_price, error = calculate_shipping_price(
             order.total_price_after_discount,
             order.total_weight,
@@ -453,13 +464,14 @@ def change_order_address(request, address_id):
     )
 
 
+# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def checkout(request):
     user = request.user
     order = Order.objects.get(payment_succeed=False, user=user)
     # validation request and check entity requirements
-    if order.order_items.count() < 1:
+    if order.order_items.count() == 0:
         return Response(
             {'error': 'empty cart item'},
             status=HTTP_204_NO_CONTENT
@@ -488,10 +500,8 @@ def checkout(request):
             "description": "user: {} payed {} rial".format(order.user.email, str(amount)),
             "metadata": {"mobile": order.user.phone_number, "email": order.user.email}
         }
-        header = {"accept": "application/json",
-                  "content-type": "application/json'"}
-        resp = requests.post(settings.ZP_API_REQUEST,
-                             data=json.dumps(data), headers=header)
+        header = {"accept": "application/json", "content-type": "application/json'"}
+        resp = requests.post(settings.ZP_API_REQUEST, data=json.dumps(data), headers=header)
         authority = resp.json()['data']['authority']
         pay_url = settings.ZP_API_START_PAY.format(authority=authority)
         # register data in order
@@ -511,21 +521,20 @@ def checkout(request):
     )
 
 
+# TODO change this section {multi-pricing}
 @api_view(['GET'])
 def verify_payment(request):
     t_status = request.GET.get('Status')
     t_authority = request.GET['Authority']
     if t_status == 'OK':
         order = Order.objects.get(authority=t_authority)
-        req_header = {"accept": "application/json",
-                      "content-type": "application/json'"}
+        req_header = {"accept": "application/json", "content-type": "application/json'"}
         req_data = {
             "merchant_id": settings.ZP_MERCHANT,
             "amount": order.amount,
             "authority": t_authority
         }
-        req = requests.post(url=settings.ZP_API_VERIFY,
-                            data=json.dumps(req_data), headers=req_header)
+        req = requests.post(url=settings.ZP_API_VERIFY, data=json.dumps(req_data), headers=req_header)
         if len(req.json()['errors']) == 0:
             t_status = req.json()['data']['code']
             if t_status == 100:
@@ -552,16 +561,17 @@ def verify_payment(request):
         return Response({'Transaction failed or canceled by user'}, status=HTTP_400_BAD_REQUEST)
 
 
+# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def increase_quantity(request, order_item_id):
     user = request.user
     order_item = OrderItem.objects.get(pk=order_item_id, user=user)
-    product_quantity = order_item.product.quantity
-    if product_quantity != 0:
+    product_variant = order_item.product_variant
+    if product_variant.quantity != 0:
         order_item.quantity += 1
-        order_item.product.quantity -= 1
-        order_item.product.save()
+        product_variant.quantity -= 1
+        product_variant.save()
         order_item.save()
         return Response(
             {'data': 'increment was successful'},
@@ -571,6 +581,7 @@ def increase_quantity(request, order_item_id):
         return Response({'error': 'cant increment'}, status=HTTP_404_NOT_FOUND)
 
 
+# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def decrease_quantity(request, order_item_id):
@@ -578,8 +589,8 @@ def decrease_quantity(request, order_item_id):
     order_item = OrderItem.objects.get(pk=order_item_id, user=user)
     if order_item.quantity != 0:
         order_item.quantity -= 1
-        order_item.product.quantity += 1
-        order_item.product.save()
+        order_item.product_variant.quantity += 1
+        order_item.product_variant.save()
         if order_item.quantity == 0:
             order_item.delete()
         else:

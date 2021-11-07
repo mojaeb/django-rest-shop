@@ -37,7 +37,7 @@ urlpatterns = [
     path('banners/', views.get_banners),
     path('sliders/', views.get_sliders),
     # shopping functionality
-    path('add-to-cart/<int:product_id>/<int:quantity>/', views.add_to_cart),
+    path('add-to-cart/', views.add_to_cart),
     path('remove-from-cart/<int:order_item_id>/', views.remove_from_cart),
     path('seed-to-cart/', views.get_sliders),
     path('cart/', views.cart),

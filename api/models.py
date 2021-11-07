@@ -52,15 +52,6 @@ class ProductTag(models.Model):
         return self.name
 
 
-class Color(models.Model):
-    name = models.CharField(max_length=50)
-    slug = models.CharField(max_length=50)
-    hex = models.CharField(max_length=8)
-
-    def __str__(self):
-        return self.name
-
-
 class GalleryImage(models.Model):
     image = models.ImageField(upload_to='images')
 
@@ -76,34 +67,88 @@ class Country(models.Model):
         return self.name
 
 
+
+
 class Product(models.Model):
-    slug = models.CharField(max_length=200, null=False)
     title = models.CharField(max_length=200)
-    code = models.CharField(max_length=50)
-    price = models.IntegerField(null=True)
-    discount = models.IntegerField(null=True)
+    slug = models.CharField(max_length=200, null=False)
     image = models.ImageField(upload_to='images', null=True)
     brand = models.ForeignKey(Brand, on_delete=models.PROTECT, null=True)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    # delivery_mode = models.ForeignKey(DeliveryMode, on_delete=models.PROTECT, null=True)
     tags = models.ManyToManyField(ProductTag)
-    quantity = models.IntegerField(default=0)
     gallery = models.ManyToManyField(GalleryImage)
-    weight = models.IntegerField()
     details = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    country = models.ForeignKey(
-        Country, null=True, blank=True, on_delete=models.PROTECT)
-    color = models.ForeignKey(Color, on_delete=models.SET_NULL, null=True, blank=True)
+    country = models.ForeignKey(Country, null=True, blank=True, on_delete=models.PROTECT)
+
+    @property
+    def min_price(self):
+        if len(self.variants.all()):
+            return min([variant.price for variant in self.variants.all()])
+        return 0
+
+    @property
+    def max_discount(self):
+        if len(self.variants.all()):
+            return max([variant.discount for variant in self.variants.all()])
+        return 0
+
+    @property
+    def variants_length(self):
+        return len(self.variants.all())
+
+    @property
+    def total_quantity(self):
+        if len(self.variants.all()):
+            return sum([variant.quantity for variant in self.variants.all()])
+        return 0
 
     def __str__(self):
         return self.title
 
 
+class OptionType(models.Model):
+    name = models.CharField(max_length=10)
+    slug = models.CharField(max_length=10)
+
+    def __str__(self):
+        return self.name
+
+
+class OptionValue(models.Model):
+    name = models.CharField(max_length=10)
+    slug = models.CharField(max_length=10)
+    type = models.ForeignKey(OptionType, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return self.name
+
+
+class ProductVariant(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="variants")
+    code = models.IntegerField(default=0, blank=True)
+    price = models.IntegerField(null=True)
+    discount = models.IntegerField(blank=True, default=0)
+    discount_due_date = models.DateTimeField(null=True, blank=True)
+    weight = models.IntegerField()
+    quantity = models.IntegerField(default=0)
+
+    def __str__(self):
+        return "{} {}".format(str(self.product), self.price)
+
+
+class VariantOption(models.Model):
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, related_name="options")
+    type = models.ForeignKey(OptionType, on_delete=models.PROTECT)
+    value = models.ForeignKey(OptionValue, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return "{} {}".format(str(self.type), str(self.value))
+
+
 class Comment(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -143,8 +188,7 @@ class Address(models.Model):
 
 # shopping models
 class Order(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     payment_succeed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     amount = models.IntegerField(default=None, null=True, blank=True)
@@ -176,25 +220,24 @@ class Order(models.Model):
 
     @property
     def total_weight(self):
-        return sum([o.product.weight for o in self.order_items.all()])
+        return sum([o.product_variant.weight for o in self.order_items.all()])
 
 
 class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    product_variant = models.ForeignKey(ProductVariant, on_delete=models.PROTECT)
     quantity = models.IntegerField(default=0)
-    order = models.ForeignKey(
-        Order, on_delete=models.CASCADE, related_name='order_items')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,
-                             on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='order_items')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def total_price(self):
-        return self.product.price * self.quantity
+        return self.product_variant.price * self.quantity
 
     @property
     def total_discount(self):
-        return self.product.discount * self.quantity
+        return self.product_variant.discount * self.quantity
 
     @property
     def total_price_after_discount(self):

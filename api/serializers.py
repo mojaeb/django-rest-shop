@@ -1,7 +1,7 @@
-
 from django.conf import Settings
 from rest_framework import serializers
-from .models import Comment, Country, GalleryImage, Product, Banner, Slider, Order, OrderItem, Like
+from .models import Comment, Country, GalleryImage, Product, Banner, Slider, Order, OrderItem, Like, ProductVariant, \
+    OptionType, VariantOption
 from .models import Address
 from .models import ProductTag
 from .models import DeliveryMode
@@ -9,7 +9,7 @@ from .models import DeliveryModeItem
 from .models import Category
 from .models import Brand
 from .models import Notification
-from .models import Color
+
 import requests
 from django.conf import settings
 from . import urls
@@ -43,16 +43,6 @@ class UserSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'phone_number',
-        ]
-
-
-class ColorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Color
-        fields = [
-            'name',
-            'slug',
-            'hex'
         ]
 
 
@@ -96,12 +86,12 @@ class ProductSerializer(serializers.ModelSerializer):
             'id',
             'slug',
             'title',
-            'code',
             'image',
-            'price',
-            'discount',
-            'quantity',
-            'category'
+            'category',
+            'min_price',
+            'max_discount',
+            'variants_length',
+            'total_quantity',
         ]
 
 
@@ -133,14 +123,63 @@ class CountrySerializer(serializers.ModelSerializer):
         ]
 
 
+class OptionTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OptionType
+        fields = [
+            'id',
+            'name',
+            'slug',
+        ]
+
+
+class OptionValueSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OptionType
+        fields = [
+            'id',
+            'name',
+            'slug',
+        ]
+
+
+class VariantOptionSerializer(serializers.ModelSerializer):
+    type = OptionTypeSerializer()
+    value = OptionValueSerializer()
+
+    class Meta:
+        model = VariantOption
+        fields = [
+            'id',
+            'type',
+            'value',
+        ]
+
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    options = VariantOptionSerializer(many=True)
+
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id',
+            'options',
+            'price',
+            'discount',
+            'code',
+            'discount_due_date',
+            'weight',
+            'quantity',
+        ]
+
+
 class ProductByIdSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
-    # delivery_mode = DeliveryModeSerializer()
     category = CategorySerializer()
     brand = BrandSerializer()
     gallery = GallerySerializer(many=True)
     country = CountrySerializer()
-    color = ColorSerializer()
+    variants = ProductVariantSerializer(many=True)
 
     class Meta:
         model = Product
@@ -148,21 +187,16 @@ class ProductByIdSerializer(serializers.ModelSerializer):
             'id',
             'slug',
             'title',
-            'code',
             'image',
-            'price',
-            'discount',
             'brand',
             'category',
             'created_at',
             'gallery',
-            'quantity',
             'tags',
             'country',
-            'weight',
             'details',
             'description',
-            'color',
+            'variants',
         ]
 
 
@@ -225,8 +259,35 @@ class SliderSerializer(serializers.ModelSerializer):
         ]
 
 
+class AbstractProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'image',
+            'category',
+        ]
+
+
+class AbstractVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = [
+            'id',
+            'price',
+            'discount',
+            'code',
+            'discount_due_date',
+            'weight',
+            'quantity',
+        ]
+
+
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
+    product = AbstractProductSerializer()
+    product_variant = AbstractVariantSerializer()
 
     class Meta:
         model = OrderItem
@@ -235,6 +296,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
             'product',
             'quantity',
             'order',
+            'product_variant',
             'created_at',
             'total_price',
             'total_discount',

@@ -25,6 +25,14 @@ def is_true(literal):
     return bool('true' in str(literal).lower())
 
 
+def str_to_boolean(s) -> bool:
+    if str(s).lower() == "false":
+        return False
+    elif str(s).lower() == "true":
+        return True
+    else:
+        return False
+
 def calculate_shipping_price(price, weight, state, city):
     params = {
         "rate_type": "tapin",
