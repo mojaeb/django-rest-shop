@@ -1,18 +1,24 @@
 kind: ExternalService
-name: backend-shop
+name: backend-medicaap
 spec:
   image_pull_policy: Always
-  port: 8000
-  path: /backend
-  domains:
-  - name: medicaap.com
+  port: 80
   source:
     context: .
     media_path: media
     project_type: django
-    python_version: '3.9'
+    python_version: "3.9"
     static_path: static
     wsgi: app.wsgi
   volume_mounts:
-  - mount_path: /usr/src/app/media
-    sub_path: backend-shop/media
+    - mount_path: /usr/src/app/media
+      sub_path: backend-medicaap/media
+  env:
+    - name: ALLOWED_HOST
+      value: backend-medicaap-aapit.fandogh.cloud
+    - name: CORS_ALLOWED_URL
+      value: "http://localhost:3000"
+    - name: DATABASE_HOST
+      value: postgresql-medicapp
+    - name: DATABASE_PASS
+      value: mje1212345678

@@ -31,9 +31,7 @@ SECRET_KEY = 'django-insecure-=qya*xk-+iv)th5*wxp&g&xni(%osxqwuh7)nblbf@_@)3o6el
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    env('ALLOWED_HOST')
-]
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -48,7 +46,6 @@ INSTALLED_APPS = [
     'user.apps.UserConfig',
     'rest_framework',
     'corsheaders',
-    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -63,9 +60,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    env('CORS_ALLOWED_URL'),
-]
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_WHITELIST = (
+  'http://localhost:3000',
+  'https://medicaap.com',
+)
 
 ROOT_URLCONF = 'app.urls'
 
@@ -176,6 +175,7 @@ SIMPLE_JWT = {
 }
 
 MEDIA_URL = '/media/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 

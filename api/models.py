@@ -67,8 +67,6 @@ class Country(models.Model):
         return self.name
 
 
-
-
 class Product(models.Model):
     title = models.CharField(max_length=200)
     slug = models.CharField(max_length=200, null=False)

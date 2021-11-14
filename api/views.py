@@ -12,12 +12,12 @@ from rest_framework.routers import reverse
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_404_NOT_FOUND
 from rest_framework.status import HTTP_204_NO_CONTENT
 
-from .models import Comment, Category, Brand, ProductVariant
+from .models import Comment, Category, Brand, ProductVariant, Country
 from .models import Like, Address, Banner, Slider, Order, OrderItem
 from .models import Notification
 from .models import Product
 from .serializers import CommentSerializer, ProductByIdSerializer, LikeSerializer, BrandSerializer, CategorySerializer, \
-    UserInfoSerializer
+    UserInfoSerializer, CountrySerializer
 from .serializers import ProductSerializer, NotificationsSerializer, AddressesSerializer, BannerSerializer
 from .serializers import SliderSerializer, OrderSerializer
 from .utils import calculate_shipping_price, str_to_boolean
@@ -49,6 +49,8 @@ def get_products(request):
         filters['category_id'] = request.data['category_id']
     if 'brand_id' in request.data:
         filters['brand_id'] = request.data['brand_id']
+    if 'country_id' in request.data:
+        filters['country_id'] = request.data['country_id']
     if 'available_in_warehouse' in request.data and request.data['available_in_warehouse']:
         filters['variants__quantity__gt'] = 0
     if 'order_by' in request.data:
@@ -83,8 +85,18 @@ def get_products(request):
 
 @api_view(['GET'])
 def get_brands(request):
-    products = Brand.objects.all()
-    serializer = BrandSerializer(products, many=True)
+    brands = Brand.objects.all()
+    serializer = BrandSerializer(brands, many=True)
+    return Response(
+        {'data': serializer.data},
+        status=HTTP_200_OK
+    )
+
+
+@api_view(['GET'])
+def get_countries(request):
+    countries = Country.objects.all()
+    serializer = CountrySerializer(countries, many=True)
     return Response(
         {'data': serializer.data},
         status=HTTP_200_OK
@@ -216,6 +228,7 @@ def change_password(request):
     user_model = get_user_model()
     user = user_model.objects.get(id=request.user.id)
     user.set_password(password)
+    user.save()
     print(password)
     return Response({'data': "changed successfully"}, status=HTTP_200_OK)
 
@@ -399,9 +412,10 @@ def add_to_cart(request):
 @permission_classes([IsAuthenticated])
 def remove_from_cart(request, order_item_id):
     order_item = OrderItem.objects.get(pk=order_item_id)
-    order_item.product_variant.quantity = order_item.quantity
-    order_item.delete()
+    product_variant = order_item.product_variant
+    product_variant.quantity = order_item.quantity
     order_item.product_variant.save()
+    order_item.delete()
     return Response({'data': 'deleted was successful'}, status=HTTP_204_NO_CONTENT)
 
 

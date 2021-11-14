@@ -11,6 +11,7 @@ urlpatterns = [
     # products
     path('products/', views.get_products),
     path('brands/', views.get_brands),
+    path('countries/', views.get_countries),
     path('categories/', views.get_categories),
     path('home-categories/', views.get_home_categories),
     path('product/<int:pid>/', views.get_product),
@@ -32,6 +33,7 @@ urlpatterns = [
     path('addresses/', views.get_addresses),
     path('address/<int:aid>/', views.address),
     path('address/', views.add_address),
+    path('change-order-address/<int:address_id>', views.change_order_address),
     path('states-and-cities/', views.get_states_and_cities),
     # public
     path('banners/', views.get_banners),

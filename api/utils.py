@@ -33,12 +33,13 @@ def str_to_boolean(s) -> bool:
     else:
         return False
 
+
 def calculate_shipping_price(price, weight, state, city):
     params = {
         "rate_type": "tapin",
         "price": price,
         "weight": weight,
-        "order_type": "0",
+        "order_type": "1",
         "pay_type": "1",
         "from_province": settings.SOURCE_STATE_CODE,
         "from_city": settings.SOURCE_CITY_CODE,
