@@ -10,20 +10,41 @@
             <th scope="col">تاریخ</th>
             <th scope="col">مبلغ ریال</th>
             <th scope="col">تخفیف ریال</th>
+            <th scope="col">مبلغ پس از تخفیف ریال</th>
+            <th scope="col">وضعیت</th>
             <th scope="col"></th>
         </tr>
         </thead>
         <tbody>
-        <tr>
-            <th scope="row">1</th>
-            <td>Mark</td>
-            <td>2/2/2022</td>
-            <td>230000</td>
-            <td>234000</td>
-            <td>
-                <a href="#">234000</a>
-            </td>
-        </tr>
+        {% for o in orders %}
+            <tr>
+                <th scope="row">{{ o.id}}</th>
+                {% if o.user.first_name == '' %}
+                    <td>{{ o.user.phone_number }}</td>
+                {% else %}
+                    <td>{{ o.user.first_name }} {{ o.user.last_name }}</td>
+                {% endif %}
+                <td>{{ o.created_at }}</td>
+                <td>{{ o.total_price }}</td>
+                <td>{{ o.total_discount }}</td>
+                <td>{{ o.total_price_after_discount }}</td>
+                {% if o.returned %}
+                    <td class="bg-warning text-white">مرجوعی</td>
+                {% elif o.delivered %}
+                    <td class="bg-primary text-white">ارسال شده</td>
+                {% elif o.warehouse_confirmation %}
+                    <td class="bg-info text-white">تایید شده</td>
+                {% elif o.payment_succeed %}
+                    <td class="bg-success text-white">پرداخت شده</td>
+                {% elif o.canceled %}
+                    <td class="bg-danger text-white">لغو شده</td>
+                {% else %}
+                    <td class="bg-secondary text-white">پرداخت نشده</td>
+                {% endif %}
+
+                <td><a href="/order/{{ o.id }}">جزییات</a></td>
+            </tr>
+        {% endfor %}
         </tbody>
     </table>
 

@@ -92,6 +92,8 @@ class ProductSerializer(serializers.ModelSerializer):
             'max_discount',
             'variants_length',
             'total_quantity',
+            'min_price_after_discount',
+            'variable_price',
         ]
 
 
@@ -171,6 +173,8 @@ class ProductVariantSerializer(serializers.ModelSerializer):
             'discount_due_date',
             'weight',
             'quantity',
+            'price_after_discount',
+            'variable_price',
         ]
 
 
@@ -198,6 +202,7 @@ class ProductByIdSerializer(serializers.ModelSerializer):
             'details',
             'description',
             'variants',
+            'variable_price',
         ]
 
 

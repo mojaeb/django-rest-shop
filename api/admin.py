@@ -33,10 +33,11 @@ class VariantOptionAdmin(admin.StackedInline):
 class ProductVariantAdmin(admin.ModelAdmin):
     fieldsets = [
         (None, {'fields': ['product', 'code']}),
-        ("prices", {'fields': ['price', 'discount', 'discount_due_date']}),
+        ("prices", {'fields': ['price', 'discount', 'discount_due_date', 'variable_price']}),
         ("information", {'fields': ['weight', 'quantity']}),
     ]
     inlines = [VariantOptionAdmin]
+
 
 
 admin.site.register(OptionType)

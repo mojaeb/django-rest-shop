@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block base %}
+    <div class="card m-3 py-2 px-3">
+        <div class="row">
+            <div class="col-lg-4 p-1">شناسه: {{ order.id }}</div>
+            <div class="col-lg-4 p-1">شماره تماس: {{ order.user.phone_number }}</div>
+            <div class="col-lg-4 p-1">نام و نام خانوادگی: {{ order.user.first_name }} {{ order.user.last_name }}</div>
+            <div class="col-lg-4 p-1">تاریخ ایجاد: {{ order.created_at }}</div>
+            <div class="col-lg-4 p-1">تاریخ پرداخت: {{ order.success_payment_datetime }}</div>
+            <div class="col-lg-4 p-1">مبلغ به ریال{{ order.total_price }}</div>
+            <div class="col-lg-4 p-1">تخفیف به تومان{{ order.total_discount }}</div>
+            <div class="col-lg-4 p-1">شناسه پرداخت: {{ order.ref_id }}</div>
+        </div>
+        <hr>
+        <div>
+            <p>آدرس: {{ order.address.address }}</p>
+            <div class="row bg-warning bg-gradient">
+                <div class="column col-lg-2 px-3 py-2">شهر: {{ order.address.city }}</div>
+                <div class="column col-lg-2 px-3 py-2">استان: {{ order.address.state }}</div>
+                <div class="column col-lg-2 px-3 py-2">پلاک: {{ order.address.house_number }}</div>
+                <div class="column col-lg-2 px-3 py-2">واحد: {{ order.address.unit }}</div>
+                <div class="column col-lg-2 px-3 py-2">آدرس پستی: {{ order.address.zip_code }}</div>
+            </div>
+            {% if not order.address.is_mine %}
+                <div>
+                    دریافت کننده:
+                    {{ order.address.first_name }}
+                    {{ order.address.last_name }}
+                    {{ order.address.phone_number }}
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+    <div class="card px-3 py-2 m-3">
+        <div class="d-flex justify-content-between">
+            <div class="d-flex gap-2">
+                <div>وضعیت ها:</div>
+                {% if order.returned %}
+                    <div class="text-warning">مرجوعی</div>
+                {% endif %}
+
+                {% if order.delivered %}
+                    <div class="text-primary">ارسال شده</div>
+                {% endif %}
+
+                {% if order.warehouse_confirmation %}
+                    <div class="text-info">تایید شده</div>
+                {% endif %}
+
+                {% if order.payment_succeed and order.ref_id %}
+                    <div class="text-success">پرداخت شده</div>
+                {% endif %}
+
+                {% if order.canceled %}
+                    <div class="text-danger">لغو شده</div>
+                {% endif %}
+
+                {% if not order.payment_succeed or not order.ref_id %}
+                    <div class="text-secondary">پرداخت نشده</div>
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2 flex-row-reverse">
+                {% if not order.warehouse_confirmation and order.ref_id %}
+                    {% csrf_token %}
+                    <form action="/available-in-warehouse/{{ order.id }}" method="post">
+                        <input class="btn-primary" type="submit" value="موجود در انبار">
+                    </form>
+                {% endif %}
+                {% if not order.delivered and order.warehouse_confirmation and order.ref_id %}
+                    <form action="/deliver/{{ order.id }}" method="post">
+                        <input class="btn-warning" type="submit" value="ارسال محصولات">
+                    </form>
+                {% endif %}
+                {% if not order.returned and order.payment_succeed %}
+                    <form action="/enable-return/{{ order.id }}" method="post">
+                        <input class="btn-danger" type="submit" value="مرجوعی سفارش">
+                    </form>
+                {% endif %}
+                {% if order.returned and order.payment_succeed %}
+                    <form action="/disable-return/{{ order.id }}" method="post">
+                        <input class="btn-danger px-4" type="submit" value="اصلاح مرجوعی">
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">ردیف</th>
+            <th scope="col">کالا</th>
+            <th scope="col">نوع کالا</th>
+            <th scope="col">تعداد</th>
+            <th scope="col">مبلغ ریال</th>
+            <th scope="col">تخفیف ریال</th>
+            <th scope="col">مبلغ پس از تخفیف ریال</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in order.order_items.all %}
+            <tr>
+                <td>{{ item.id }}</td>
+                <td>{{ item.product }}</td>
+                <td>{{ item.product_variant }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.product_variant.price }}</td>
+                <td>{{ item.product_variant.discount }}</td>
+                <td>{{ item.product_variant.price_after_discount }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

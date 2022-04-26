@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db import models
 from django.forms import Textarea
-from .models import CustomUser
+from .models import CustomUser, RegisterDraft
 
 
 class UserAdminConfig(UserAdmin):
@@ -29,3 +29,4 @@ class UserAdminConfig(UserAdmin):
 
 
 admin.site.register(CustomUser, UserAdminConfig)
+admin.site.register(RegisterDraft)

@@ -16,8 +16,6 @@ spec:
   env:
     - name: ALLOWED_HOST
       value: backend-medicaap-aapit.fandogh.cloud
-    - name: CORS_ALLOWED_URL
-      value: "http://localhost:3000"
     - name: DATABASE_HOST
       value: postgresql-medicapp
     - name: DATABASE_PASS

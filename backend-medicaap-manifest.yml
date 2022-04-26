@@ -1,0 +1,28 @@
+kind: ExternalService
+name: backend-medicaap
+spec:
+  allow_http: true
+  env:
+    - name: ALLOWED_HOST
+      value: backend-medicaap-aapit.fandogh.cloud
+    - name: DATABASE_HOST
+      value: postgresql-medicapp
+    - name: DATABASE_PASS
+      value: mje1212345678
+  image: 'backend-medicaap:latest'
+  image_pull_policy: Always
+  path: /
+  port: 80
+  replicas: 1
+  resources:
+    memory: 700Mi
+  source:
+    context: .
+    media_path: media
+    project_type: django
+    python_version: '3.9'
+    static_path: static
+    wsgi: app.wsgi
+  volume_mounts:
+    - mount_path: /usr/src/app/media
+      sub_path: backend-medicaap/media

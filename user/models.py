@@ -36,7 +36,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                                  message="Phone number must be entered in the format: '+999999999'. Up to 15 digits "
                                          "allowed.")
     phone_number = models.CharField(validators=[phone_regex], max_length=17, unique=True)
-    user_name = models.CharField(max_length=150, unique=True)
+    user_name = models.CharField(max_length=150)
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     start_date = models.DateTimeField(default=timezone.now)
@@ -51,4 +51,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['user_name', 'email']
 
     def __str__(self):
-        return self.user_name
+        return self.phone_number
+
+
+class RegisterDraft(models.Model):
+    phone_regex = RegexValidator(regex=r'^\+?1?\d{9,15}$', message="enter valid phone number")
+    phone_number = models.CharField(validators=[phone_regex], max_length=17, unique=True)
+    form = models.JSONField(null=True, blank=None)
+    code = models.CharField(max_length=10)
+    started_at = models.DateTimeField(auto_now=True)
+    registered = models.BooleanField(default=False)

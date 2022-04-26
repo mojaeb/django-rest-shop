@@ -23,12 +23,6 @@ from .serializers import SliderSerializer, OrderSerializer
 from .utils import calculate_shipping_price, str_to_boolean
 
 
-# TODO search with parameters
-# TODO pagination
-# filter with pass category_id, product_title, tag_id, banner_id, between price number,
-# has in warehouse
-
-
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 10
     page_query_param = 'page'
@@ -36,13 +30,17 @@ class StandardResultsSetPagination(PageNumberPagination):
     max_page_size = 1000
 
 
-# TODO change this section {multi-pricing}
+@api_view(['GET'])
+def get_all_products(request):
+    products = Product.objects.all()
+    serializer = ProductSerializer(products, many=True)
+    return Response({'data': serializer.data}, status=HTTP_200_OK)
+
+
 @api_view(['POST'])
 def get_products(request):
     filters = {}
     order_by = '-created_at'
-    # for key, value in request.data.items():
-    #     filters[key] = value
     if 'has_discount' in request.data:
         filters['variants__discount__gt'] = 0
     if 'category_id' in request.data:
@@ -369,16 +367,15 @@ def get_banners(request):
     )
 
 
-# TODO change this section {multi-pricing}{done}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def add_to_cart(request):
     variant_id = request.data['variant_id']
     product_id = request.data['product_id']
     quantity = request.data['quantity']
-
     user = request.user
     order = Order.objects.get_or_create(payment_succeed=False, user=user)
+    print(order)
     order = order[0]
     product_variant = ProductVariant.objects.get(pk=variant_id)
     order_item, created = OrderItem.objects.get_or_create(
@@ -387,7 +384,7 @@ def add_to_cart(request):
         product_id=product_id,
         product_variant_id=variant_id,
     )
-    if product_variant.quantity != 0 and quantity <= product_variant.quantity:
+    if product_variant.quantity != 0 and quantity <= product_variant.quantity and not product_variant.variable_price:
         product_variant.quantity -= quantity
         product_variant.save()
         if created:
@@ -407,7 +404,6 @@ def add_to_cart(request):
         )
 
 
-# TODO change this section {multi-pricing}{done}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def remove_from_cart(request, order_item_id):
@@ -419,7 +415,6 @@ def remove_from_cart(request, order_item_id):
     return Response({'data': 'deleted was successful'}, status=HTTP_204_NO_CONTENT)
 
 
-# TODO change this section {multi-pricing}
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def cart(request):
@@ -438,9 +433,7 @@ def cart(request):
             order.address = last_address[0]
             order.save()
     serializer = OrderSerializer(order)
-
     has_shipping_payment = str_to_boolean(request.GET.get("has_shipping_payment"))
-
     if order.address and order.order_items.count() and has_shipping_payment:
         shipping_price, error = calculate_shipping_price(
             order.total_price_after_discount,
@@ -478,7 +471,6 @@ def change_order_address(request, address_id):
     )
 
 
-# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def checkout(request):
@@ -535,7 +527,6 @@ def checkout(request):
     )
 
 
-# TODO change this section {multi-pricing}
 @api_view(['GET'])
 def verify_payment(request):
     t_status = request.GET.get('Status')
@@ -575,7 +566,6 @@ def verify_payment(request):
         return Response({'Transaction failed or canceled by user'}, status=HTTP_400_BAD_REQUEST)
 
 
-# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def increase_quantity(request, order_item_id):
@@ -595,7 +585,6 @@ def increase_quantity(request, order_item_id):
         return Response({'error': 'cant increment'}, status=HTTP_404_NOT_FOUND)
 
 
-# TODO change this section {multi-pricing}
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def decrease_quantity(request, order_item_id):

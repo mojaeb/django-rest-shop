@@ -31,7 +31,7 @@ SECRET_KEY = 'django-insecure-=qya*xk-+iv)th5*wxp&g&xni(%osxqwuh7)nblbf@_@)3o6el
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+
 
 # Application definition
 
@@ -46,12 +46,12 @@ INSTALLED_APPS = [
     'user.apps.UserConfig',
     'rest_framework',
     'corsheaders',
+    'author.apps.AuthorConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -60,11 +60,13 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
 ]
 
+ALLOWED_HOSTS = ['*']
+
 CORS_ORIGIN_ALLOW_ALL = False
-CORS_ORIGIN_WHITELIST = (
-  'http://localhost:3000',
-  'https://medicaap.com',
-)
+CORS_ALLOWED_ORIGINS = [
+    'https://medicaap.com',
+    'http://localhost:3000',
+]
 
 ROOT_URLCONF = 'app.urls'
 
@@ -100,7 +102,6 @@ DATABASES = {
 
     }
 }
-
 
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': [
@@ -186,3 +187,6 @@ ZP_MERCHANT = '2f85a167-6367-4db4-9907-33d510733ae1'
 ZP_API_REQUEST = "https://api.zarinpal.com/pg/v4/payment/request.json"
 ZP_API_VERIFY = "https://api.zarinpal.com/pg/v4/payment/verify.json"
 ZP_API_START_PAY = "https://www.zarinpal.com/pg/StartPay/{authority}"
+
+MP_USERNAME = "09128465479"
+MP_PASSWORD = "@Mir5730061455"

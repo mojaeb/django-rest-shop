@@ -79,17 +79,24 @@ class Product(models.Model):
     details = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     country = models.ForeignKey(Country, null=True, blank=True, on_delete=models.PROTECT)
+    variable_price = models.BooleanField(default=False)
 
     @property
     def min_price(self):
-        if len(self.variants.all()):
-            return min([variant.price for variant in self.variants.all()])
+        if self.variants.count():
+            return self.variants.first().price
+        return 0
+
+    @property
+    def min_price_after_discount(self):
+        if self.variants.count():
+            return self.variants.first().price_after_discount
         return 0
 
     @property
     def max_discount(self):
-        if len(self.variants.all()):
-            return max([variant.discount for variant in self.variants.all()])
+        if self.variants.count():
+            return self.variants.first().discount
         return 0
 
     @property
@@ -98,7 +105,7 @@ class Product(models.Model):
 
     @property
     def total_quantity(self):
-        if len(self.variants.all()):
+        if self.variants.count():
             return sum([variant.quantity for variant in self.variants.all()])
         return 0
 
@@ -131,6 +138,14 @@ class ProductVariant(models.Model):
     discount_due_date = models.DateTimeField(null=True, blank=True)
     weight = models.IntegerField()
     quantity = models.IntegerField(default=0)
+    variable_price = models.BooleanField(default=False)
+
+    @property
+    def price_after_discount(self):
+        return self.price - self.discount
+
+    class Meta:
+        ordering = ['price', '-discount']
 
     def __str__(self):
         return "{} {}".format(str(self.product), self.price)
